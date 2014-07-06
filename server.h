@@ -1,3 +1,6 @@
+#ifndef SERVER_H
+#define SERVER_H
+
 #ifdef WIN32
 
 #include <winsock2.h>
@@ -24,7 +27,7 @@ typedef struct in_addr IN_ADDR;
 
 #endif
 
-#define PORT	 	1977
+#define PORT	 	1566
 #define BUF_SIZE	1024
 
 #include "client.h"
@@ -36,3 +39,5 @@ static int init_connection(void);
 static void end_connection(int sock);
 static int recv_mail(SOCKET sock, char *buffer);
 static void send_mail(SOCKET sock, const char *buffer);
+
+#endif

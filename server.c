@@ -73,5 +73,9 @@ static void send_mail(SOCKET sock, const char *buffer){
 }
 
 int main(int argc, char *argv[]){
+    init();
+    app();
+    end();
 
+    return EXIT_SUCCESS;
 }
