@@ -12,16 +12,43 @@
 
 // RFC 5321
 
-void traitementclient(int connfd)
-{
+bool isEndMail(char * recv){
+
+	char endMail[3] = {"."};
+	int l;
+	if(strlen(recv) == 2){
+		for(l=0; l<1; l++){
+			if(recv[l] != endMail[l])
+				return false;		
+		}
+		return true;
+	}
+}
+
+void receptContentMail(int connfd){
+
+	char recvline[MAXLINE];
+	if (read(connfd, recvline, MAXLINE) == 0)
+		return;	
+
+	while(!isEndMail(recvline)){
+		memset(&recvline[0], 0, sizeof(recvline));
+		if (read(connfd, recvline, MAXLINE) == 0)
+			break;
+	}	
+}
+
+void traitementclient(int connfd){
+
 	char commandes[5][15] = {{"EHLO"}, {"MAIL FROM"}, {"RCPT TO"}, {"DATA"}, {"QUIT"}};
-	char reponses[6][100] = {
+	char reponses[7][100] = {
 		{"220 SMTP Service Ready\n"},
 		{"250 YourSmtpServer\n"},
 		{"250 Requested mail action okay, completed\n"},
 		{"354 Enter mail, end with . on a line by itself\n"},
 		{"221 Service closing transmission channel\n"},
-		{"500 Syntax error, command unrecognized\n"} 
+		{"500 Syntax error, command unrecognized\n"},
+		{"250 End of mail OK\n"} 
 	};
 
 	write(connfd,reponses[0],strlen(reponses[0]));
@@ -71,6 +98,8 @@ void traitementclient(int connfd)
 			case 3:
 			  	write(connfd,reponses[3],strlen(reponses[3]));
 			  	printf("DATA \n");
+				receptContentMail(connfd);
+				write(connfd,reponses[6],strlen(reponses[6]));
 			  break;
 			case 4:
 				write(connfd,reponses[4],strlen(reponses[4]));

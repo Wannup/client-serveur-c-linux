@@ -10,5 +10,4 @@ Commandes à lancer pour tester:
 
 
 
-Projet non terminé : - traitement de la commande DATA non complet.
-					 - gestion des messages reçus par le serveur.
+Scénario client/serveur SMTP : ok (RFC 5321) 
