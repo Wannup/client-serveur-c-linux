@@ -3,13 +3,13 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <string.h>
 #include <stdbool.h>
-#define MAXLINE 200
+#define MAXLINE 500
+
+bool sendAndReceive(int sock, char * buffer);
 
 //verification si la reponse contient le code 221 au debut
 bool isQuitCommand(char * recv){
@@ -17,7 +17,7 @@ bool isQuitCommand(char * recv){
 	char reponse[3] = {"221"};
 	int m;
 	if(strlen(recv) > 3){
-		for(m=0; m<strlen(reponse); m++){
+		for(m=0; m<3; m++){
 			if(recv[m] != reponse[m])
 				return false;
 		}
@@ -44,7 +44,7 @@ void isDataCommand(char * recv, int sockfd){
 	char reponse[3] = {"354"};
 	int k;
 	bool equal = true;
-	char sendline[MAXLINE], recvline[MAXLINE];
+	char sendline[MAXLINE];
 
 	if(strlen(recv) > 3){
 		for(k=0; k<strlen(reponse); k++){
@@ -54,65 +54,83 @@ void isDataCommand(char * recv, int sockfd){
 			}
 		}
 		if(equal){
-			printf("Saisi du message:\n");
+			printf("Saisie du message:\n");
 			while(fgets(sendline, MAXLINE, stdin) != NULL && !isEndMail(sendline)){
 				write(sockfd, sendline, strlen(sendline)+1);
 				memset(&sendline[0], 0, sizeof(sendline));			
 			}
-			write(sockfd, sendline, strlen(sendline)+1);
-			if (read(sockfd, recvline, MAXLINE) == 0){
-				printf("Server terminated prematurely\n");
-				exit(0);
-			}	
-			fputs(recvline, stdout);	
+			sendAndReceive(sockfd, "\r\n.\r\n");
 		}			
-	}
-	
+	}	
 }
 
-void str_cli(FILE *fp, int sockfd){
+void sendSmtpBuffer(int sock, char * contentToSend){
+   
+	int size = strlen(contentToSend);
+   	if(size > 0)
+		send(sock, contentToSend, size, 0);
+}
+
+bool sendAndReceive(int hSocket, char * pszBuffer){
+   
+	char Buffer[MAXLINE]; int cb, cbBuffer;
+   	sendSmtpBuffer(hSocket, pszBuffer);
+
+   	/* Wait the \r\n*/
+   	cbBuffer = 0;
+   	while(1){
+		cb = recv(hSocket, Buffer+cbBuffer, sizeof(Buffer)-1-cbBuffer, 0);
+		if(cb <= 0)
+   			break;
+		
+		cbBuffer += cb;
+		if(memcmp(Buffer+cbBuffer-2, "\r\n", 2) == 0)
+			break;
+   	}
+
+	if(cbBuffer > 0){
+		Buffer[cbBuffer] = 0;
+		write(1, Buffer, cbBuffer);
+		isDataCommand(Buffer, hSocket);
+
+		if(isQuitCommand(Buffer))
+			return false;
+
+		return true;
+   	}
+
+   	else{
+		printf("Connection close\n");
+		return false;
+   	}
+}
+
+void actionsClient(int sockfd){
 
 	char sendline[MAXLINE], recvline[MAXLINE];
-
-	if (read(sockfd, recvline, MAXLINE) == 0)
-	{
+	memset(&recvline[0], 0, sizeof(recvline));
+	
+	if (read(sockfd, recvline, MAXLINE) == 0){
 		printf("Server terminated prematurely\n");
 		exit(0);
 	}
+
 	fputs(recvline, stdout);
-	memset(&recvline[0], 0, sizeof(recvline));
-	while (fgets(sendline, MAXLINE, fp) != NULL) {
 
-		write(sockfd, sendline, strlen(sendline)+1);
-
-		if (read(sockfd, recvline, MAXLINE) == 0)
-			{
-			printf("Server terminated prematurely\n");
-			exit(0);
-			}
-		fputs(recvline, stdout);
-		isDataCommand(recvline, sockfd);
-
-		if(isQuitCommand(recvline))
-			break;
-
-		memset(&recvline[0], 0, sizeof(recvline));
+	while (fgets(sendline, MAXLINE, stdin) != NULL && sendAndReceive(sockfd, sendline))
 		memset(&sendline[0], 0, sizeof(sendline));
-	}
+	
 }
 
 int main(int argc, char **argv) {
 
 	int	sockfd;
 	struct sockaddr_in	servaddr;
-	FILE *fp;
-	
 
-	if (argc != 3)
-		{
+	if (argc != 3){
 		printf("usage: smtpClient <IPaddress> <port>\n");
 		exit(0);
-		}
+	}
 		
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -123,8 +141,7 @@ int main(int argc, char **argv) {
 
 	connect(sockfd, (struct sockaddr*) &servaddr, sizeof(servaddr));
 
-	fp=stdin;
-	str_cli(fp, sockfd);		
+	actionsClient(sockfd);		
 
 	exit(0);
 }

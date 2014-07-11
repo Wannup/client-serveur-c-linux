@@ -14,10 +14,10 @@
 
 bool isEndMail(char * recv){
 
-	char endMail[3] = {"."};
+	char endMail[5] = {"\r\n.\r\n"};
 	int l;
-	if(strlen(recv) == 2){
-		for(l=0; l<1; l++){
+	if(strlen(recv) == 5){
+		for(l=0; l<5; l++){
 			if(recv[l] != endMail[l])
 				return false;		
 		}
@@ -35,20 +35,20 @@ void receptContentMail(int connfd){
 		memset(&recvline[0], 0, sizeof(recvline));
 		if (read(connfd, recvline, MAXLINE) == 0)
 			break;
-	}	
+	}
 }
 
 void traitementclient(int connfd){
 
 	char commandes[5][15] = {{"EHLO"}, {"MAIL FROM"}, {"RCPT TO"}, {"DATA"}, {"QUIT"}};
 	char reponses[7][100] = {
-		{"220 SMTP Service Ready\n"},
-		{"250 YourSmtpServer\n"},
-		{"250 Requested mail action okay, completed\n"},
-		{"354 Enter mail, end with . on a line by itself\n"},
-		{"221 Service closing transmission channel\n"},
-		{"500 Syntax error, command unrecognized\n"},
-		{"250 End of mail OK\n"} 
+		{"220 SMTP Service Ready\r\n"},
+		{"250 YourSmtpServer\r\n"},
+		{"250 Requested mail action okay, completed\r\n"},
+		{"354 Enter mail, end with . on a line by itself\r\n"},
+		{"221 Service closing transmission channel\r\n"},
+		{"500 Syntax error, command unrecognized\r\n"},
+		{"250 End of mail OK\r\n"} 
 	};
 
 	write(connfd,reponses[0],strlen(reponses[0]));
@@ -81,8 +81,7 @@ void traitementclient(int connfd){
 				}
 			}
 			// commande smtp présente ou pas
-			switch (commande)
-			{
+			switch (commande){
 			case 0:
 			  	write(connfd,reponses[1],strlen(reponses[1]));
 			  	printf("EHLO \n");
